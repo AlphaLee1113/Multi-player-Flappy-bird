@@ -1,0 +1,29 @@
+{
+ "tony": {
+  "password": "$2b$10$Yxb2fSgA5RFn9Oz9TxjLLuve/GiPXCs2DWVFhyFDr4qz39qglwp8e"
+ },
+ "alpha": {
+  "password": "$2b$10$wvUP15AMMJGIX2MMk/NEdOmSg.RLBk5ZYAFSTyJHoKLsdYQRWZOoy"
+ },
+ "nicole": {
+  "password": "$2b$10$I1FQfvvQPVmFU29Qzvh0LeTC10ayACo8/cL1pRfH0HbnOJpliSO/2"
+ },
+ "ey": {
+  "password": "$2b$10$HU1JVmQAwfnMb6IqQ9Jele9/74uf16/lYKJtoB5UAVtsNl3b58dQ6"
+ },
+ "ec": {
+  "password": "$2b$10$wE0Hyjs6LPOVAAM66n.fKeeuMSHMT2KhQhLue2ixmS3M.FZWIhdu."
+ },
+ "bbb": {
+  "password": "$2b$10$qRJ4Mz61rPCSty/psxENaeUSUCFgmymlp/hsb7M4oNFdnwkC6KQEq"
+ },
+ "aaa": {
+  "password": "$2b$10$OV5vc1WtzKzNx3rpuRZr4ex/jh7nfV6R8wFq1HCSNtbHTOa/DezTy"
+ },
+ "a": {
+  "password": "$2b$10$fGOBFdPx55tktOoLmtz3N.x8U9XuLm65.CfZ7FBFV2ekqQdEkHnJi"
+ },
+ "b": {
+  "password": "$2b$10$9USqFpT0hU/OTFuN7Xt0k.RxRLw1r9LSwxI5.Z0WqOH7SDh75n7Mu"
+ }
+}

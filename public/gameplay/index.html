@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>FlappyBird</title>
+    <link rel="stylesheet" href="style.css" > 
+    <link href="https://fonts.googleapis.com/css?family=Squada+One&display=swap" rel="stylesheet">
+</head>
+<style>
+    .left-column, 
+    .right-column,
+    .middle-column {
+    float: left;
+    box-sizing: border-box;
+    }
+
+    .left-column {
+        background: rgba(100, 250, 250, 0.8);
+        width: 20%;
+        height: 100%;
+    }
+
+    .middle-column {
+        background: rgba(100, 100, 250, 0.8);
+        width: 60%;
+        height: 100%;
+        position: relative;
+    }
+
+    .right-column {  
+        background: rgba(100, 250, 250, 0.8);
+        width: 20%;
+        height: 480px;
+    }
+
+    #game-start-page {
+        background: rgba(250, 250, 250, 0.8);
+        width: 854px;
+        height: 480px;
+    }
+
+    .map_row {
+        width: 100%;
+        height: 200px;
+        position: relative;
+    }
+
+    .map_text {
+        position: absolute;
+        top: 0%;
+        left: 50%;
+        transform: translate(-50%, -50%); 
+        text-align: center;
+    }
+
+    .map_image {
+        width: 90%;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+    }
+
+    .character_1_image, .character_2_image {
+        width: 100%;
+        height: 22%;
+        float: left;
+        box-sizing: border-box;
+        padding: 10px;
+    }
+
+    .character_color {
+        filter: none;
+    }
+    .character_black {
+        filter: brightness(0%);
+    }
+    .disabled {
+        filter: grayscale(1);
+    }
+    .disabled * { 
+        pointer-events: none;
+    }
+    .image-animation {
+        width: 100%;
+        height: 80%;
+        left: 50%;
+        background-image: url(media/back04.jpg);
+        animation-timing-function: linear;
+        animation-iteration-count: 3;
+
+        animation: animate 1s; 
+    }
+
+    @keyframes animate {
+        0% {background-image: url(media/back04.jpg);}
+        12% {background-image: url(media/back06.jpg);}
+        24% {background-image: url(media/back07.jpg);}
+        36% {background-image: url(media/back04.jpg);}
+        48% {background-image: url(media/back06.jpg);}
+        60% {background-image: url(media/back07.jpg);}
+        72% {background-image: url(media/back04.jpg);}
+        84% {background-image: url(media/back06.jpg);}
+        96% {background-image: url(media/back07.jpg);}
+    }
+
+    #countdown{
+        background: rgba(0, 0, 0, 0.8);
+        color:  rgba(250, 250, 250, 0.8);
+        width: 854px;
+        height: 480px;
+        left: 50%;
+        font-size: 60px;
+    }
+    </style>
+    <script> 
+//character setting
+        const bird = {
+            id: 0,
+            animations: [
+                { sprite: new Image() },
+                { sprite: new Image() },
+                { sprite: new Image() },
+                { sprite: new Image() },
+            ],
+            rotatation: 0,
+            x: 50,
+            y: 100,
+            speed: 0,
+            gravity: 0.125,
+            thrust: 3.6,
+            frame: 0,
+            draw: function () {
+                let h = this.animations[this.frame].sprite.height;
+                let w = this.animations[this.frame].sprite.width;
+                sctx.save();
+                sctx.translate(this.x, this.y);
+                sctx.rotate(this.rotatation * RAD);
+                sctx.drawImage(this.animations[this.frame].sprite, -w / 2, -h / 2);
+                sctx.restore();
+            },
+            update: function () {
+                let r = parseFloat(this.animations[0].sprite.width) / 2;
+                switch (state.curr) {
+                case state.getReady:
+                    this.rotatation = 0;
+                    this.y += frames % 10 == 0 ? Math.sin(frames * RAD) : 0;
+                    this.frame += frames % 10 == 0 ? 1 : 0;
+                    break;
+                case state.Play:
+                    this.frame += frames % 5 == 0 ? 1 : 0;
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.getCoin();
+                    this.getTrash();
+                    this.speed += this.gravity;
+                    socket.emit("player_bird_info", JSON.stringify({id: this.id, y: this.y, frame: this.frame, speed: this.speed}));
+                    if (this.y + r >= gnd.y || this.collisioned()) {
+                        flappy_bird_UI.score.curr -= 20;
+                        if(flappy_bird_UI.score.curr<=0){
+                            flappy_bird_UI.score.curr = 0;
+                        }
+                    state.curr = state.gameOver;
+                    }
+                    if(this.getTrap()){
+                        state.curr = state.trapped;
+                    }
+                    break;
+                case state.trapped:
+                    this.frame += frames % 5 == 0 ? 1 : 0;
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.getCoin();
+                    this.getTrash();
+                    this.speed += 2*this.gravity;
+                    socket.emit("player_bird_info", JSON.stringify({id: this.id, y: this.y, frame: this.frame, speed: this.speed}));
+                    if (this.y + r >= gnd.y || this.collisioned()) {
+                        flappy_bird_UI.score.curr -= 20;
+                        if(flappy_bird_UI.score.curr<=0){
+                            flappy_bird_UI.score.curr = 0;
+                        }
+                    state.curr = state.gameOver;
+                    }
+                    if(frames%1000==0){
+                        state.curr = state.Play;
+                    }
+                    break;
+                case state.gameOver:
+                    this.frame = 1;
+                    if (this.y + r < gnd.y) {
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.speed += this.gravity * 2;
+                    } else {
+                    this.speed = 0;
+                    this.y = gnd.y - r;
+                    this.rotatation = 90;
+                    if (!SFX.played) {
+                        SFX.die.play();
+                        SFX.played = true;
+                    }
+                    }
+
+                    break;
+                }
+                this.frame = this.frame % this.animations.length;
+            },
+            flap: function () {
+                if (this.y > 0) {
+                SFX.flap.play();
+                this.speed = -this.thrust;
+                }
+        },
+        setRotation: function () {
+            if (this.speed <= 0) {
+            this.rotatation = Math.max(-25, (-25 * this.speed) / (-1 * this.thrust));
+            } else if (this.speed > 0) {
+            this.rotatation = Math.min(90, (90 * this.speed) / (this.thrust * 2));
+            }
+        },
+        collisioned: function () {
+            if (!pipe.pipes.length) return;
+            let bird = this.animations[0].sprite;
+            let x = pipe.pipes[0].x;
+            let y = pipe.pipes[0].y;
+            let r = bird.height / 4 + bird.width / 4;
+            let roof = y + parseFloat(pipe.top.sprite.height);
+            let floor = roof + pipe.gap;
+            let w = parseFloat(pipe.top.sprite.width);
+            if (this.x + r >= x) {
+            if (this.x + r < x + w) {
+                if ((this.y - r <= roof || this.y + r >= floor) && p1cheat == false) {
+                SFX.hit.play();
+                // console.log("flappy_bird_UI.score.curr :", flappy_bird_UI.score.curr);
+                return true;
+                }
+            } else if (pipe.moved) {
+                flappy_bird_UI.score.curr++;
+                SFX.score.play();
+                pipe.moved = false;
+            }
+            }
+        },
+        getCoin: function () {
+            if (!coin.coins.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(coin.coins[0].x);
+            let y = Math.abs(coin.coins[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(coin.sprite.height);
+            // if(frames%50==0){
+            //     console.log("coin.coins[0].x: ", coin.coins[0].x);
+
+            // }
+
+            if  ( (Math.abs(this.x+r-(x+13)))<= 40)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=40 ) {
+                    if(!coin.coins[0].gotten){
+                        coin.coins[0].gotten = true;
+                        flappy_bird_UI.score.curr++;
+                        console.log("flappy_bird_UI.score.curr: ", flappy_bird_UI.score.curr);
+                        coin.coins[0].y = -9999;
+                        coin.coins.shift();
+                        SFX.coins.play();
+                        return true;
+                    }
+
+                }
+            }
+        },
+
+        getTrash: function () {
+            if (!trash.trashs.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(trash.trashs[0].x);
+            let y = Math.abs(trash.trashs[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(trash.sprite.height);
+            if  ( (Math.abs(this.x+r-(x+13)))<=40)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=40 ) {
+                    if(!trash.trashs[0].gotten){
+                        trash.trashs[0].gotten = true;
+                        flappy_bird_UI.score.curr--;
+                        console.log("flappy_bird_UI.score.curr: ", flappy_bird_UI.score.curr);
+                        if(flappy_bird_UI.score.curr<=0){
+                            flappy_bird_UI.score.curr = 0;
+                        }
+                        trash.trashs[0].y = -9999;
+                        trash.trashs.shift();
+                        SFX.trashs.play();
+                        return true;
+                    }
+
+                }
+            }
+        },
+        getTrap: function () {
+            if (!trap.traps.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(trap.traps[0].x);
+            let y = Math.abs(trap.traps[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(trap.sprite.height);
+            if  ( (Math.abs(this.x+r-(x+13)))<=35)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=35 ) {
+                    if(!trap.traps[0].gotten){
+                        trap.traps[0].gotten = true;
+                        trap.traps[0].y = -9999;
+                        trap.traps.shift();
+                        SFX.traps.play();
+                        return true;
+                    }
+
+                }
+            }
+        },
+
+        };
+        bird.animations[0].sprite.src = "gameplay/img/bird/b0.png";
+        bird.animations[1].sprite.src = "gameplay/img/bird/b1.png";
+        bird.animations[2].sprite.src = "gameplay/img/bird/b2.png";
+        bird.animations[3].sprite.src = "gameplay/img/bird/b0.png";
+
+        // bird object for another user
+        const bird_2 = {
+            id: 0,
+            animations: [
+                { sprite: new Image() },
+                { sprite: new Image() },
+                { sprite: new Image() },
+                { sprite: new Image() },
+            ],
+            rotatation: 0,
+            x: 50,
+            y: 100,
+            speed: 0,
+            gravity: 0.125,
+            thrust: 3.6,
+            frame: 0,
+            draw: function () {
+                let h = this.animations[this.frame].sprite.height;
+                let w = this.animations[this.frame].sprite.width;
+                sctx.save();
+                sctx.translate(this.x, this.y);
+                sctx.rotate(this.rotatation * RAD);
+                sctx.drawImage(this.animations[this.frame].sprite, -w / 2, -h / 2);
+                sctx.restore();
+            },
+            update: function () {
+                let r = parseFloat(this.animations[0].sprite.width) / 2;
+                switch (state.curr) {
+                case state.getReady:
+                    this.rotatation = 0;
+                    this.y += frames % 10 == 0 ? Math.sin(frames * RAD) : 0;
+                    this.frame += frames % 10 == 0 ? 1 : 0;
+                    break;
+                case state.Play:
+                    this.frame += frames % 5 == 0 ? 1 : 0;
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.speed += this.gravity;
+                    // if (this.y + r >= gnd.y || this.collisioned()) {
+                    // state.curr = state.gameOver;
+                    // }
+
+                    break;
+                case state.trapped:
+                    this.frame += frames % 5 == 0 ? 1 : 0;
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.speed += 2*this.gravity;
+                    // if (this.y + r >= gnd.y || this.collisioned()) {
+                    // state.curr = state.gameOver;
+                    // }
+
+                    break;
+                case state.gameOver:
+                    this.frame = 1;
+                    if (this.y + r < gnd.y) {
+                    this.y += this.speed;
+                    this.setRotation();
+                    this.speed += this.gravity * 2;
+                    } else {
+                    this.speed = 0;
+                    this.y = gnd.y - r;
+                    this.rotatation = 90;
+                    if (!SFX.played) {
+                        SFX.die.play();
+                        SFX.played = true;
+                    }
+                    }
+
+                    break;
+                }
+                this.frame = this.frame % this.animations.length;
+            },
+            flap: function () {
+                if (this.y > 0) {
+                SFX.flap.play();
+                this.speed = -this.thrust;
+                }
+        },
+        setRotation: function () {
+            if (this.speed <= 0) {
+            this.rotatation = Math.max(-25, (-25 * this.speed) / (-1 * this.thrust));
+            } else if (this.speed > 0) {
+            this.rotatation = Math.min(90, (90 * this.speed) / (this.thrust * 2));
+            }
+        },
+        collisioned: function () {
+            if (!pipe.pipes.length) return;
+            let bird = this.animations[0].sprite;
+            let x = pipe.pipes[0].x;
+            let y = pipe.pipes[0].y;
+            let r = bird.height / 4 + bird.width / 4;
+            let roof = y + parseFloat(pipe.top.sprite.height);
+            let floor = roof + pipe.gap;
+            let w = parseFloat(pipe.top.sprite.width);
+            if (this.x + r >= x) {
+            if (this.x + r < x + w) {
+                if ((this.y - r <= roof || this.y + r >= floor) && p2cheat == false) {
+                SFX.hit.play();
+
+                // console.log("flappy_bird_UI.score.curr :", flappy_bird_UI.score.curr);
+                return true;
+                }
+            } else if (pipe.moved) {
+                flappy_bird_UI.score.curr++;
+                SFX.score.play();
+                pipe.moved = false;
+            }
+            }
+        },
+        getCoin: function () {
+            if (!coin.coins.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(coin.coins[0].x);
+            let y = Math.abs(coin.coins[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(coin.sprite.height);
+            // if(frames%50==0){
+            //     console.log("coin.coins[0].x: ", coin.coins[0].x);
+
+            // }
+            if  ( (Math.abs(this.x+r-(x+13)))<=40)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=40 ) {
+                    if(!coin.coins[0].gotten){
+                        coin.coins[0].gotten = true;
+                        flappy_bird_UI.score.curr++;
+                        console.log("flappy_bird_UI.score.curr: ", flappy_bird_UI.score.curr);
+                        SFX.score.play();
+                        coin.coins[0].y = -9999;
+                        coin.coins.shift();
+                        return true;
+                    }
+
+                }
+            }
+        },
+        getTrash: function () {
+            if (!trash.trashs.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(trash.trashs[0].x);
+            let y = Math.abs(trash.trashs[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(trash.sprite.height);
+            if  ( (Math.abs(this.x+r-(x+13)))<=35)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=35 ) {
+                    if(!trash.trashs[0].gotten){
+                        trash.trashs[0].gotten = true;
+                        flappy_bird_UI.score.curr--;
+                        if(flappy_bird_UI.score.curr<=0){
+                            flappy_bird_UI.score.curr = 0;
+                        }
+                        console.log("flappy_bird_UI.score.curr: ", flappy_bird_UI.score.curr);
+                        SFX.hit.play();
+                        trash.trashs[0].y = -9999;
+                        trash.trashs.shift();
+                        return true;
+                    }
+
+                }
+            }
+        },
+        getTrap: function () {
+            if (!trap.traps.length) return;
+            let bird = this.animations[0].sprite;
+            let x = Math.abs(trap.traps[0].x);
+            let y = Math.abs(trap.traps[0].y);
+            let r = bird.height / 4 + bird.width / 4;
+            let height = parseFloat(trap.sprite.height);
+            if  ( (Math.abs(this.x+r-(x+13)))<=35)  {
+                if ( (Math.abs(this.y+r-(y+50)))<=35 ) {
+                    if(!trap.traps[0].gotten){
+                        trap.traps[0].gotten = true;
+                        SFX.hit.play();
+                        trap.traps[0].y = -9999;
+                        trap.traps.shift();
+                        return true;
+                    }
+
+                }
+            }
+        },
+        };
+        bird_2.animations[0].sprite.src = "gameplay/img/bird/b0.png";
+        bird_2.animations[1].sprite.src = "gameplay/img/bird/b1.png";
+        bird_2.animations[2].sprite.src = "gameplay/img/bird/b2.png";
+        bird_2.animations[3].sprite.src = "gameplay/img/bird/b0.png";
+
+        // background setting
+        const bg = {
+          sprite: new Image(),
+          x: 0,
+          y: 0,
+          draw: function () {
+            y = parseFloat(scrn.height - this.sprite.height);
+            sctx.drawImage(this.sprite, this.x, y);
+          },
+        };
+
+
+
+//game background color
+        let background_Color =  "#e6993c";
+//remove all animation at first
+        const map_animtaion = document.querySelector('.image-animation');
+        map_animtaion.classList.remove('image-animation');
+        map_animtaion.addEventListener("animationend", handleMapAnimationEnd);
+
+//randomize the map and send to server later 
+        const images = ['media/back04.jpg','media/back06.jpg', 'media/back07.jpg'];
+        // Get random index between 0-3
+        let randomIndex = Math.floor(Math.random() * images.length);
+
+        // Return image filename from random index
+        let map_name = 'url(' + images[randomIndex] + ')';        
+
+// handle function after randomize the background then count down for 3
+        function handleMapAnimationEnd(){
+            //change the stop animation to the randomized image
+            const final_map = document.querySelector('.image-animation');
+            final_map.style.backgroundImage = map_name;
+            if(map_name == "url(media/back04.jpg)"){
+                //daytime
+                background_Color = "#30c0df";
+            }
+            else if(map_name == "url(media/back06.jpg)"){
+                //dawn
+                background_Color = "#e6993c";
+            }
+            else if(map_name == "url(media/back07.jpg)"){
+                //night
+                background_Color = "#1d1159";
+            }
+
+            console.log("handle and Randomized image is ", map_name);
+            
+            //start the countdown animation
+            setTimeout(() => {
+                //hide the sign in page
+                $("#game-start-page").hide();
+                //show the countdown page
+                $("#countdown").show();
+                drawText();
+                //show the game page
+                // $("#flappy-canvas").show();
+            }, 1000);
+        }
+//for drawing Count down
+        const canvas = document.getElementById('countdown');
+        const ctx = canvas.getContext('2d');
+
+        let countdown = 3;
+
+        function drawText() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "100px Arial";
+            ctx.fillStyle = "white";
+            if(countdown != 0)
+                ctx.fillText(countdown, 420, 240);
+
+            if(countdown > 0) {
+                // decrement and call again
+                countdown--;
+                // console.log("countdown is", countdown );
+                setTimeout(drawText, 1000);  
+            } else {
+                // console.log("countdown is started" );
+                countdown = 3;
+                ctx.fillText("Start", 320, 200);
+                setTimeout(() => {
+                    //hide the count down page
+                    $("#countdown").hide();
+                    //show the game page
+                    $("#flappy-canvas").show();
+
+                    // emit the start game to server
+                    socket.emit("start_game", bird.id);
+                }, 1000);
+            }
+        }
+        //diable the right column and map as player cannot choose
+        const rightColumn = document.querySelector('.right-column');
+        rightColumn.classList.toggle('disabled');
+        const middleColumn = document.querySelector('.middle-column');
+        middleColumn.classList.toggle('disabled');
+
+        //choose which character?
+        let character_id = 0;  
+
+
+        //set the server so that it can receive message any time
+        socket = io();
+        socket.on("connect", () => {
+            console.log("Connected to server");
+        });
+        socket.on("update_player_ready", (userInfo) => {
+            //get current user name and set the name of current player
+            const currentUser = Authentication.getUser();
+            const userName = JSON.stringify(currentUser.username);
+            const currentPlayerName = document.getElementById('game-start-player-1-name');
+            currentPlayerName.innerHTML = userName;
+
+            //get back the player 2 name
+            userInfo = JSON.parse(userInfo);
+            console.log("userInfo.userName is", userInfo.userName, "with id ",userInfo.characterID,"and map name ",userInfo.map_name);
+            
+            //remove the character that another player has chosen
+            const images = document.querySelectorAll('.character_1_image');
+            // Loop through images
+            images.forEach(image => {
+                // Get image id
+                const imageId = image.id;  
+                // Remove existing classes
+                image.classList.remove('character_color');
+                image.classList.remove('character_black');
+
+                if(imageId === "character_"+userInfo.characterID) {
+                    image.classList.add('character_black');
+                    image.style.pointerEvents = "none";
+                } else {
+                    image.classList.add('character_color');
+                }
+            });
+            
+            if(userInfo.userName != userName){
+                //means another user is ready so we set another side as ready
+                const Player2Name = document.getElementById('game-start-player-2-name');
+                Player2Name.innerHTML = userInfo.userName;
+                const para2 = document.getElementById('player_2_ready');
+                para2.innerHTML = "Player 2 has ready";
+
+                //set the character of another player
+                bird_2.id = parseInt(userInfo.characterID);
+                console.log("Player2 ID: ", bird_2.id);
+
+                //print the type of id
+                switch (bird_2.id){
+                    case 1: //red
+                        console.log("Red");
+                        bird_2.animations[0].sprite.src = "gameplay/img/bird/red_b0.png";
+                        bird_2.animations[1].sprite.src = "gameplay/img/bird/red_b1.png";
+                        bird_2.animations[2].sprite.src = "gameplay/img/bird/red_b2.png";
+                        bird_2.animations[3].sprite.src = "gameplay/img/bird/red_b0.png";
+                        break;
+                    case 2: //yellow
+                        console.log("Yellow");
+                        bird_2.animations[0].sprite.src = "gameplay/img/bird/b0.png";
+                        bird_2.animations[1].sprite.src = "gameplay/img/bird/b1.png";
+                        bird_2.animations[2].sprite.src = "gameplay/img/bird/b2.png";
+                        bird_2.animations[3].sprite.src = "gameplay/img/bird/b0.png";
+                        break;
+                    case 3: //blue
+                        console.log("Blue");
+                        bird_2.animations[0].sprite.src = "gameplay/img/bird/blue_b0.png";
+                        bird_2.animations[1].sprite.src = "gameplay/img/bird/blue_b1.png";
+                        bird_2.animations[2].sprite.src = "gameplay/img/bird/blue_b2.png";
+                        bird_2.animations[3].sprite.src = "gameplay/img/bird/blue_b0.png";
+                        break;
+            }
+        }
+
+            if(document.getElementById('player_1_ready').innerHTML != "" &&
+                document.getElementById('player_2_ready').innerHTML != ""){
+                    console.log("BOTH USER ARE READY");
+                    console.log("Player1 ID: ", bird.id, "Player2 ID: ", bird_2.id);
+                    //set the map name
+                    map_name = userInfo.map_name;
+                    //enable the users to choose map
+                    const middle_map = document.querySelectorAll('.middle-column');
+                    middle_map.forEach(middle => {
+                        middle.classList.remove('disabled');
+                    });
+                    //start the mao animation
+                    map_animtaion.classList.add('image-animation');
+                }
+        });
+
+        function characterClick(id) {
+            const images = document.querySelectorAll('.character_1_image');
+
+            // Loop through images
+            images.forEach(image => {
+
+                // Get image id
+                const imageId = image.id;  
+
+                // Remove existing classes
+                image.classList.remove('character_color');
+                image.classList.remove('character_black');
+
+
+                if(imageId === `character_${id}`) {
+                    image.classList.add('character_color');
+                } else {
+                    image.classList.add('character_black');
+                }
+            });
+            character_id = id;
+
+            //newly added
+            switch (id){
+                case 1: //red
+                    bird.animations[0].sprite.src = "gameplay/img/bird/red_b0.png";
+                    bird.animations[1].sprite.src = "gameplay/img/bird/red_b1.png";
+                    bird.animations[2].sprite.src = "gameplay/img/bird/red_b2.png";
+                    bird.animations[3].sprite.src = "gameplay/img/bird/red_b0.png";
+                    break;
+                case 2: //yellow
+                    bird.animations[0].sprite.src = "gameplay/img/bird/b0.png";
+                    bird.animations[1].sprite.src = "gameplay/img/bird/b1.png";
+                    bird.animations[2].sprite.src = "gameplay/img/bird/b2.png";
+                    bird.animations[3].sprite.src = "gameplay/img/bird/b0.png";
+                    break;
+                case 3: //blue
+                    bird.animations[0].sprite.src = "gameplay/img/bird/blue_b0.png";
+                    bird.animations[1].sprite.src = "gameplay/img/bird/blue_b1.png";
+                    bird.animations[2].sprite.src = "gameplay/img/bird/blue_b2.png";
+                    bird.animations[3].sprite.src = "gameplay/img/bird/blue_b0.png";
+                    break;
+            }
+        }
+        function readyClick() {
+            //check if user choose character or not yet
+            if(character_id == 0 ){
+                const Player1Message = document.getElementById('player_1_ready');
+                Player1Message.innerHTML = "You have not chose your character yet";
+                return;
+            }
+
+            bird.id = character_id;
+
+            //prepare data of current player for sending to server
+            const currentUser = Authentication.getUser();
+            const userName = JSON.stringify(currentUser.username);
+            const characterID = JSON.stringify(character_id);
+
+            //connect the server and tell it the player is ready 
+            //NECESSARY to have 2  socket = io(); becuase this socket = io(); is trigger only when we click ready
+            //when 1st layer press ready 2nd player may not receive the broadcast as 2nd player not press ready yet
+            // so must need 2 socket = io();
+            socket = io();
+            //send current player data to server 
+            socket.on("connect", () => {
+                console.log("already connect server");
+                socket.emit("player_ready",userName, characterID, map_name);
+            });      
+
+            //change the whole column to gay scale
+            const columns = document.querySelectorAll('.left-column');
+            columns.forEach(column => {column.classList.add('disabled');});
+
+            const para = document.getElementById('player_1_ready');
+            para.innerHTML = "Player 1 has ready";
+        }
+    </script>
+<body>
+    <div id="game-start-page">
+        <div class="left-column">
+            <p>Player 1</p>
+            <p id="game-start-player-1-name">user name</p>
+            <img id="character_1" class="character_1_image" src="media/red.png" onclick="characterClick(1)">
+            <img id="character_2" class="character_1_image" src="media/green.png" onclick="characterClick(2)">
+            <img id="character_3" class="character_1_image" src="media/blue.png" onclick="characterClick(3)">
+            <button style="right: 50%;" onclick="readyClick()">Ready</button>
+            <p id="player_1_ready"></p>
+        </div>
+        <div class="middle-column">
+
+            <div style="height: 80px">
+                <h1 class="map_text">Your map is ...</h1>
+            </div>
+            <div class="image-animation"></div>
+        
+        </div>
+
+        <div class="right-column">
+            <p>Player 2</p>
+            <p id="game-start-player-2-name">user name</p>
+            <img id="character_1" class="character_2_image" src="media/red.png" onclick="characterClick(1)">
+            <img id="character_2" class="character_2_image" src="media/green.png" onclick="characterClick(2)">
+            <img id="character_3" class="character_2_image" src="media/blue.png" onclick="characterClick(3)">
+            <button style="right: 50%;" onclick="readyClick()">Ready</button>
+            <p id="player_2_ready"></p>
+        </div>
+    </div>   
+
+    <canvas style="display: none" id="countdown" width="854px" height="480px"></canvas>
+
+    <!-- Flappy game Start -->
+    <!-- <canvas style="display: none;" id="flappy-canvas" width="276" height="414"></canvas> -->
+    <canvas style="display: none" id="flappy-canvas" width="854px" height="480px"></canvas>
+    <script src="gameplay/game.js"></script>
+</body>
+</html>

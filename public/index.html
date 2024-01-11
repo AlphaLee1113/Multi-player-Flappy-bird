@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flippy Bird </title>
+    <link rel="shortcut icon" href="#" />
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <!-- <link href="style2.css" rel="stylesheet"> -->
+    <script> 
+        $(function(){
+          $("#Flappy_Bird_gameScreen").load("gameplay/index.html"); 
+        });
+    </script>
+</head>
+<body>
+    <div id="container" class="col">
+        <div id="header" class="row">
+            <div id="title">Game Area</div>
+
+            <div class="spacer-grow"></div>
+
+            <div id="user-panel" class="row">
+                <div class="field-content row shadow">
+                    <span class="user-name">-</span>
+                </div>
+                <button id="signout-button" class="icon"><span class="material-icons">logout</span></button>
+            </div>
+        </div>
+
+        <div id="main-panel" class="row">
+            <div id="game-panel" class="col">
+                <div id="Flappy_Bird_gameScreen"></div>
+            </div>
+
+            <div id="online-users-panel" class="col">
+                Here are the online users:
+                <div id="online-users-area" class="col"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- <div id="overlay-content"> hello</div> -->
+    <div id="signin-overlay" class="overlay row">
+        <div class="content shadow row">
+            <div id="inforamtion" class="col">
+                <h1>Game description:</h1>
+                    <p>click “spacebar” to jump and collect as much coins as you can in 2 minutes!!!</p>
+                    <p>Try to avoid collecting the rubbish or touching the trap/water pipe, otherwise you may lose the game.</p>
+                    <table >
+                        <tr>
+                          <th>Coin</th> 
+                          <th>Trash</th>
+                          <th>Trap</th>
+                          <th>pipe</th>
+                        </tr>
+                      
+                        <tr>
+                          <td><img src="media\coins.png" width="50" ></td>
+                          <td><img src="gameplay\img\trash\trash.png" width="50" ></td>
+                          <td><img src="gameplay\img\trap\trap.png" width="50" ></td> 
+                          <td style="text-align: center;"><img src="media\botpipe.png" width="50" ></td>
+                        </tr>
+                      
+                        <tr>  
+                          <td> +1 score</td>
+                          <td> -1 score</td>
+                          <td>+gravity</td>
+                          <td>
+                            +1 score if pass through
+                            <br/>
+                            -20 score if touched
+                            </td>
+                        </tr>
+                      </table>
+                <h1>Player pair up:</h1>
+                <div> 
+                    After signing in, You can choose your own character and wait for another players to ready.
+                    &nbsp;
+                    (NOTE: Both players cannot choose the same character)
+                    <br/>
+                    and we will automatically pair you up with another players who are ready
+                    <br/>
+                    Game will start after both players ready
+                </div>
+            </div>
+            <div class="signin_and_register" class="col">
+                <form id="signin-form">
+                    <div class="caption">SIGN IN OUR GAME</div>
+                    <div class="spacer-0"></div>
+                    <input id="signin-username" placeholder="Enter your username"></input>
+                    <div class="spacer-1"></div>
+                    <input id="signin-password" type="password" placeholder="Enter your password"></input>
+                    <div class="spacer-0"></div>
+                    <button type="submit">Sign In</button>
+                    <div id="signin-message" class="warning center"></div>
+                    <div class="spacer-grow"></div>
+                </form>
+
+                <div class="spacer-2"></div>
+
+                <form id="register-form">
+                    <div class="caption">OR, REGISTER AN ACCOUNT</div>
+                    <div class="spacer-1"></div>
+                    <input id="register-username" maxlength="10" placeholder="Enter your username"></input>
+                    <div class="spacer-1"></div>
+                    <input id="register-password" type="password" placeholder="Enter your password"></input>
+                    <div class="spacer-1"></div>
+                    <input id="register-confirm" type="password" placeholder="Enter your password again"></input>
+                    <div class="spacer-1"></div>
+                    <button type="submit">Register</button>
+                    <div id="register-message" class="warning center"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.min.js"></script>
+    <script src="scripts/socket.js"></script>
+    <script src="scripts/ui.js"></script>
+    <script src="scripts/registration.js"></script>
+    <script src="scripts/authentication.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Initialize the UI
+        UI.initialize();
+
+
+        // Validate the signin
+        Authentication.validate(
+            () => {
+                SignInForm.hide();
+                // UserPanel.update(Authentication.getUser());
+                UserPanel.show();
+
+                Socket.connect();
+                
+                //dislay the user name in the column
+                // const currentUser = Authentication.getUser();
+                // const para = document.getElementById('game-start-user-name');
+                // para.innerHTML = currentUser.username;
+            },
+            () => { SignInForm.show(); }
+        );
+    });
+    </script>
+</body>
+</html>
